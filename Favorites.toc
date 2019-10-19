@@ -1,0 +1,12 @@
+## Interface: 80205
+## Title: |cFF99CC01Favorites|r
+## Version: 3.1
+## Notes: Adds favorites & Class colors to the in game friends list
+## Author: Jax
+## SavedVariables: favsDB
+#@no-lib-strip@
+Embeds.xml
+#@end-no-lib-strip@
+
+Favorites.lua
+Options.lua

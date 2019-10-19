@@ -9,7 +9,7 @@ local defaults = {
 	},
 	favBTs = {	}
   }
-} 
+}  
 ADD_FAVORITE_STATUS = "Add to Blizzard Favorites"
 REMOVE_FAVORITE_STATUS = "Remove from Blizzard Favorites"
 UnitPopupButtons["BN_ADD_FAVORITE"]	= { text = ADD_FAVORITE_STATUS, };

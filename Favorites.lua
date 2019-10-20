@@ -9,7 +9,7 @@ local defaults = {
 	},
 	favBTs = {	}
   }
-}  
+}
 ADD_FAVORITE_STATUS = "Add to Blizzard Favorites"
 REMOVE_FAVORITE_STATUS = "Remove from Blizzard Favorites"
 UnitPopupButtons["BN_ADD_FAVORITE"]	= { text = ADD_FAVORITE_STATUS, };
@@ -79,7 +79,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 
 	local addButtonIndex = 0;
 	local totalButtonHeight = 0;
-	local function AddButtonInfo(buttonType, id, favName, bnSep)
+	local function AddButtonInfo(buttonType, id, favName, bnSep, overrideTitle)
 		local na = nil
 		if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
 			_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
@@ -87,6 +87,9 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			na, _, _, _, _, _, _, _, _ = GetFriendInfo(id);
 		end
 		if not (friendSearchValue == "") then
+      if (buttonType == BNET_HEADER_TEXT and not (overrideTitle == "Search Results")) then
+        return
+      end
 			if (na and ca) and (not string.find(string.lower(na), string.lower(friendSearchValue)) and ca and not string.find(string.lower(ca), string.lower(friendSearchValue))) then
 				return
 			elseif (na and not ca) and (not string.find(string.lower(na), string.lower(friendSearchValue))) then
@@ -103,6 +106,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 		FriendListEntries[addButtonIndex].id = id;
 		FriendListEntries[addButtonIndex].favName = favName;
 		FriendListEntries[addButtonIndex].bnSep = bnSep;
+    FriendListEntries[addButtonIndex].overrideTitle = overrideTitle;
 		totalButtonHeight = totalButtonHeight + FRIENDS_BUTTON_HEIGHTS[buttonType];
 	end
 
@@ -122,6 +126,17 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
 	-- search
 	AddButtonInfo(BNET_SEARCH, nil, nil, false);
+
+  -- favorite friends, online and offline
+  if (not (friendSearchValue == "")) then
+    AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true, "Search Results");
+  end
+  if (numBNetFavorite > 0) then
+    AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true, "Blizzard Favorites");
+  end
+  for i = 1, numBNetFavorite do
+    AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
+  end
 	--favs
 	for l, s in pairs(Favorites.db.profile.favTypes) do
 		local _, online = BNGetNumFavs(l)
@@ -130,12 +145,13 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			-- favorite Battlenet friends
 			local addedAny = false
 			for i = 1, numBNetOffline+numBNetOnline do
+        local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
 				local id, _, battleTag , _, _, _, client, o = BNGetFriendInfo(i);
 				if s[id] then
 					s[id] = nil;
 					s[battleTag] = true
 				end
-				if o and s[battleTag] then
+				if not accountInfo.isFavorite and o and s[battleTag] then
 					addedAny = true
 					AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 				end
@@ -144,29 +160,8 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
 	AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true);
 
-  local bnetFriendIndex = 0;
-	-- favorite friends, online and offline
-  local favC = 0
-	for i = 1, numBNetFavorite do
-    local _, _, battleTag, _, _, _, client = BNGetFriendInfo(i);
-    local addIt = true
-    for l, s in pairs(Favorites.db.profile.favTypes) do
-      if s[battleTag] then
-        addIt = false
-      end
-    end
-		bnetFriendIndex = bnetFriendIndex + 1;
-    if addIt then
-      favC = favC + 1;
-		  AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, bnetFriendIndex);
-    end
-	end
-	if (favC > 0) then
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_DIVIDER, nil);
-	end
-
 	-- online Battlenet friends
-	for i = 1, numBNetOnline - numBNetFavoriteOnline do
+	for i = 1 + numBNetFavorite, numBNetOnline - numBNetFavoriteOnline do
     local _, _, battleTag, _, _, _, client = BNGetFriendInfo(i);
     local addIt = true
     for l, s in pairs(Favorites.db.profile.favTypes) do
@@ -174,9 +169,8 @@ local function FriendsList_UpdateFIX(forceUpdate)
         addIt = false
       end
     end
-    bnetFriendIndex = bnetFriendIndex + 1;
     if addIt then
-		    AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, bnetFriendIndex);
+		    AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
     end
 	end
 
@@ -190,8 +184,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
   -- offline Battlenet friends
 	for i = 1, numBNetOffline - numBNetFavoriteOffline do
-		bnetFriendIndex = bnetFriendIndex + 1;
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, bnetFriendIndex);
+		AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i + numBNetOnline);
 	end
 	-- offline WoW friends
 	for i = 1, numWoWOffline do
@@ -322,6 +315,7 @@ local function fix(button)
 	button.buttonType = FriendListEntries[index].buttonType;
 	button.id = FriendListEntries[index].id;
 	button.favName = FriendListEntries[index].favName
+	button.overrideTitle = FriendListEntries[index].overrideTitle
 	button.bnSep = FriendListEntries[index].bnSep
 	if button.header then
 		button.header:Hide()
@@ -499,7 +493,11 @@ local function fix(button)
 		header:SetAllPoints(button);
 		header:Show();
 		if button.bnSep then
-			header:SetText("Battle Net Friends");
+      if button.overrideTitle then
+        header:SetText(button.overrideTitle);
+      else
+			  header:SetText("Battle Net Friends");
+      end
 		else
 			local ft, fo = BNGetNumFavs(button.favName)
 			header:SetFormattedText(button.favName.." (%d/%d)", fo, ft);

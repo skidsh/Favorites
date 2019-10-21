@@ -32,7 +32,7 @@ function Favorites:SetupOptions()
 			  args={
 				 ccBG = {
 				  order = 1,
-				  width = "double",
+				  width = 1.5,
 				  name = "Faction Color Backgrounds",
 				  desc = "Color the Background of Each Friend Based on Faction",
 				  type = "toggle",
@@ -43,7 +43,7 @@ function Favorites:SetupOptions()
 				},
 				ccOF = {
 				  order = 2,
-				  width = "double",
+				  width = 1.5,
 				  name = "Class Color Opposite Faction",
 				  desc = "Class Color Friends of the Opposite Faction",
 				  type = "toggle",
@@ -52,8 +52,36 @@ function Favorites:SetupOptions()
 						end,
 				  get = function(info) return self.db.profile.classColorOppositeFaction end
 				},
-				ccOP = {
+
+				cl = {
+					order = 3,
+					width = 1.5,
+					name = "Show Character Level",
+					desc = "Show character level on friends list",
+					type = "toggle",
+					set = function(info,val) self.db.profile.showLevel = val
+											 FriendsList_Update(true)
+						  end,
+					get = function(info) return self.db.profile.showLevel end
+				  },
+				  sc = {
 					order = 4,
+					width = 1.5,
+					name = "Show Character class",
+					desc = "Show character class on friends list",
+					type = "toggle",
+					set = function(info,val) self.db.profile.showClass = val
+											 FriendsList_Update(true)
+						  end,
+					get = function(info) return self.db.profile.showClass end
+				  },
+				  sc2 = {
+					order = 5,
+					name = "",
+					type = "header"
+				  },
+				ccOP = {
+					order = 6,
 					width = "double",
 					name = "Color WoW Classic Friends",
 					desc = "Color of the names of Friends playing WoW Classic",
@@ -71,7 +99,7 @@ function Favorites:SetupOptions()
 					get = function(info) return self.db.profile.classColorOtherProject end
 				},
 				favTypes={
-					order = 5,
+					order = 7,
 					name = "Current Favorite Groups",
 					type = "select",
 					values = Favorites.favTypes,
@@ -80,7 +108,7 @@ function Favorites:SetupOptions()
 					style = "radio"
 				},
 				delFav={
-					order = 6,
+					order = 8,
 					width = "normal",
 					name = "Remove Group",
 					type = "execute",
@@ -100,7 +128,7 @@ function Favorites:SetupOptions()
 					end,
 			    },
 					resetFav={
-						order = 8,
+						order = 9,
 						width = "nomral",
 						name = "Full Reset",
 						type = "execute",
@@ -129,11 +157,11 @@ function Favorites:SetupOptions()
 				spacer = {
 				   type = "description",
 				   name="", --use an empty value for name
-				   order = 5,
+				   order = 10,
 				   width="small", --forces a new line after the items above it
 				},
 				addFav={
-					order = 6,
+					order = 11,
 					name = "Add Custom Favorites Group",
 					type = "input",
 					get = function() return "" end,
@@ -148,7 +176,7 @@ function Favorites:SetupOptions()
 				notes = {
 				   type = "description",
 				   name="\n\nThe default favorites group cannot be deleted.", --use an empty value for name
-				   order =7,
+				   order =12,
 				   width="full", --forces a new line after the items above it
 				},
 

@@ -3,7 +3,9 @@ local defaults = {
   profile = {
 	colorBackground = false,
 	classColorOppositeFaction = false,
-  classColorOtherProject = 1,
+	showLevel = false,
+	showClass = false,
+ 	classColorOtherProject = 1,
 	favTypes = {
 		["Favorites"] = {	},
 	},
@@ -42,21 +44,8 @@ local INVITE_RESTRICTION_WOW_PROJECT_MAINLINE = 7;
 local INVITE_RESTRICTION_WOW_PROJECT_CLASSIC = 8;
 local INVITE_RESTRICTION_NONE = 9;
 local INVITE_RESTRICTION_MOBILE = 10;
+local currentFaction = UnitFactionGroup("player");
 
-function BNGetNumFavs(t)
-  local count = 0
-  local online = 0
-  for _ in pairs(Favorites.db.profile.favTypes[t]) do count = count + 1 end
-  for i=1, BNGetNumFriends() do
-		local _, _, battleTag, _, _, _, client, o = BNGetFriendInfo(i);
-		if Favorites.db.profile.favTypes[t][battleTag] then
-			if o then
-				online = online+1
-			end
-		end
-  end
-  return count, online
-end
 
 function Favorites:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("favsDB", defaults, true)
@@ -65,7 +54,7 @@ end
 
 local function FriendsList_UpdateFIX(forceUpdate)
 
-  local numBNetTotal, numBNetOnline, numBNetFavorite, numBNetFavoriteOnline = BNGetNumFriends();
+    local numBNetTotal, numBNetOnline, numBNetFavorite, numBNetFavoriteOnline = BNGetNumFriends();
 	local numBNetOffline = numBNetTotal - numBNetOnline;
 	local numBNetFavoriteOffline = numBNetFavorite - numBNetFavoriteOnline;
 	local numWoWTotal = C_FriendList.GetNumFriends();
@@ -76,20 +65,19 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	if ( not FriendsListFrame:IsShown() and not forceUpdate) then
 		return;
 	end
-
 	local addButtonIndex = 0;
 	local totalButtonHeight = 0;
 	local function AddButtonInfo(buttonType, id, favName, bnSep, overrideTitle)
-		local na = nil
-		if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
-			_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
-		elseif ( buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
-			na, _, _, _, _, _, _, _, _ = GetFriendInfo(id);
-		end
 		if not (friendSearchValue == "") then
-      if (buttonType == BNET_HEADER_TEXT and not (overrideTitle == "Search Results")) then
-        return
-      end
+			if (buttonType == BNET_HEADER_TEXT and not (overrideTitle == "Search Results")) then
+				return
+			end
+			local na = nil
+			if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
+				_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
+			elseif ( buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
+				na, _, _, _, _, _, _, _, _ = GetFriendInfo(id);
+			end
 			if (na and ca) and (not string.find(string.lower(na), string.lower(friendSearchValue)) and ca and not string.find(string.lower(ca), string.lower(friendSearchValue))) then
 				return
 			elseif (na and not ca) and (not string.find(string.lower(na), string.lower(friendSearchValue))) then
@@ -106,10 +94,10 @@ local function FriendsList_UpdateFIX(forceUpdate)
 		FriendListEntries[addButtonIndex].id = id;
 		FriendListEntries[addButtonIndex].favName = favName;
 		FriendListEntries[addButtonIndex].bnSep = bnSep;
-    FriendListEntries[addButtonIndex].overrideTitle = overrideTitle;
+		FriendListEntries[addButtonIndex].overrideTitle = overrideTitle;
 		totalButtonHeight = totalButtonHeight + FRIENDS_BUTTON_HEIGHTS[buttonType];
 	end
-
+	local i = 1;
 	-- invites
 	local numInvites = BNGetNumFriendInvites();
 	if ( numInvites > 0 ) then
@@ -126,35 +114,30 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
 	-- search
 	AddButtonInfo(BNET_SEARCH, nil, nil, false);
-
-  -- favorite friends, online and offline
   if (not (friendSearchValue == "")) then
     AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true, "Search Results");
   end
   if (numBNetFavorite > 0) then
     AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true, "Blizzard Favorites");
   end
+  -- favorite friends, online and offline
   for i = 1, numBNetFavorite do
     AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
   end
-	--favs
+	-- --favs
+	 local favs = { };
 	for l, s in pairs(Favorites.db.profile.favTypes) do
-		local _, online = BNGetNumFavs(l)
-		if online > 0 then
-			AddButtonInfo(BNET_HEADER_TEXT, nil, l)
-			-- favorite Battlenet friends
-			local addedAny = false
-			for i = 1, numBNetOffline+numBNetOnline do
-        local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
-				local id, _, battleTag , _, _, _, client, o = BNGetFriendInfo(i);
-				if s[id] then
-					s[id] = nil;
-					s[battleTag] = true
-				end
-				if not accountInfo.isFavorite and o and s[battleTag] then
-					addedAny = true
-					AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
-				end
+		AddButtonInfo(BNET_HEADER_TEXT, nil, l)
+		-- favorite Battlenet friends
+		for i = 1 + numBNetFavorite, numBNetOffline+numBNetOnline-numBNetFavoriteOnline do
+			local id, _, battleTag , _, _, _, client = BNGetFriendInfo(i);
+			if s[id] then
+				s[id] = nil;
+				s[battleTag] = true
+			end
+			if s[battleTag] then
+				favs[i] = battleTag;
+				AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 			end
 		end
 	end
@@ -162,16 +145,9 @@ local function FriendsList_UpdateFIX(forceUpdate)
 
 	-- online Battlenet friends
 	for i = 1 + numBNetFavorite, numBNetOnline - numBNetFavoriteOnline do
-    local _, _, battleTag, _, _, _, client = BNGetFriendInfo(i);
-    local addIt = true
-    for l, s in pairs(Favorites.db.profile.favTypes) do
-      if s[battleTag] then
-        addIt = false
-      end
-    end
-    if addIt then
-		    AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
-    end
+		if not favs[i] then
+			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
+		end
 	end
 
 	-- online WoW friends
@@ -184,7 +160,9 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
   -- offline Battlenet friends
 	for i = 1, numBNetOffline - numBNetFavoriteOffline do
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i + numBNetOnline);
+		if not favs[i + numBNetOnline] then
+			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i + numBNetOnline);
+		end
 	end
 	-- offline WoW friends
 	for i = 1, numWoWOffline do
@@ -327,12 +305,13 @@ local function fix(button)
 	if button.facIcon then button.facIcon:Hide() end
 	local height = FRIENDS_BUTTON_HEIGHTS[button.buttonType];
 	local nameText, nameColor, infoText, isFavoriteFriend, statusTexture;
+	local extendedInfo = "";
 	local hasTravelPassButton = false;
 	if ( button.buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
 		local info = C_FriendList.GetFriendInfoByIndex(FriendListEntries[index].id);
 		if ( info.connected ) then
 			button.background:SetColorTexture(FRIENDS_WOW_BACKGROUND_COLOR.r, FRIENDS_WOW_BACKGROUND_COLOR.g, FRIENDS_WOW_BACKGROUND_COLOR.b, FRIENDS_WOW_BACKGROUND_COLOR.a);
-      if ( info.afk ) then
+    	  	if ( info.afk ) then
 				button.status:SetTexture(FRIENDS_TEXTURE_AFK);
 			elseif ( info.dnd ) then
 				button.status:SetTexture(FRIENDS_TEXTURE_DND);
@@ -340,7 +319,14 @@ local function fix(button)
 				button.status:SetTexture(FRIENDS_TEXTURE_ONLINE);
 			end
 			nameText = info.name..", "..format(FRIENDS_LEVEL_TEMPLATE, info.level, info.className);
-      nameColor = RAID_CLASS_COLORS[string.upper(info.className)];
+			local ix=0
+			local cCount = GetNumClasses();
+			for ix=0, cCount, 1 do
+			  local keyClass, ClassFilename = GetClassInfo(ix)
+			  if (keyClass == info.className) then
+				nameColor = RAID_CLASS_COLORS[ClassFilename]
+			  end
+			end
 		else
 			button.background:SetColorTexture(FRIENDS_OFFLINE_BACKGROUND_COLOR.r, FRIENDS_OFFLINE_BACKGROUND_COLOR.g, FRIENDS_OFFLINE_BACKGROUND_COLOR.b, FRIENDS_OFFLINE_BACKGROUND_COLOR.a);
 			button.status:SetTexture(FRIENDS_TEXTURE_OFFLINE);
@@ -361,35 +347,68 @@ local function fix(button)
 
     			button.status:SetTexture(statusTexture);
 
-    			if accountInfo.gameAccountInfo.isOnline then
-            if (accountInfo.gameAccountInfo.className) then
-              local myProject = accountInfo.gameAccountInfo.wowProjectID == WOW_PROJECT_ID
-              local class = string.gsub(string.upper(accountInfo.gameAccountInfo.className), "%s+", "")
-              -- search for localized class and convert to localization independent class
-              local ix=0
-              for ix=0, GetNumClasses(), 1 do
-                local keyClass, ClassFilename = GetClassInfo(ix)
-                if (keyClass == accountInfo.gameAccountInfo.className) then
-                  class = ClassFilename
-                end
-              end
+				if accountInfo.gameAccountInfo.isOnline then
+				local class;
+				if (accountInfo.gameAccountInfo.className) then
+					extendedInfo = ""
+					if (Favorites.db.profile.showLevel and accountInfo.gameAccountInfo.characterLevel) then
+						extendedInfo = "[Level "..accountInfo.gameAccountInfo.characterLevel.."] "
+					end
 
-              if (myProject) then
-                nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
-                if (Favorites.db.profile.classColorOppositeFaction) then
-                  nameText = nameText:gsub("ff7b8489", RAID_CLASS_COLORS[class].colorStr)
-                end
-              else
-                if (Favorites.db.profile.classColorOtherProject == 2) then
-                  nameText = nameText:gsub("fffde05c", "ff7b8489")
-                elseif (Favorites.db.profile.classColorOtherProject == 3) then
-                  nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
-                  nameText = nameText:gsub("ff7b8489", RAID_CLASS_COLORS[class].colorStr)
-                elseif (Favorites.db.profile.classColorOtherProject == 4) then
-                  nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
-                end
-              end
-            end
+					local myProject = accountInfo.gameAccountInfo.wowProjectID == WOW_PROJECT_ID
+					class = string.gsub(string.upper(accountInfo.gameAccountInfo.className), "%s+", "")
+					-- search for localized class and convert to localization independent class
+					local ix=0
+					local cCount = GetNumClasses();
+					for ix=0, cCount, 1 do
+						local keyClass, ClassFilename = GetClassInfo(ix)
+						if (keyClass == accountInfo.gameAccountInfo.className) then
+							class = ClassFilename
+						end
+					end
+
+					if (myProject) then
+						nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
+						if (Favorites.db.profile.classColorOppositeFaction) then
+							nameText = nameText:gsub("ff7b8489", RAID_CLASS_COLORS[class].colorStr)
+						end
+						if (accountInfo.gameAccountInfo.factionName and currentFaction == accountInfo.gameAccountInfo.factionName) then
+							if (Favorites.db.profile.showClass and accountInfo.gameAccountInfo.className) then
+								extendedInfo = extendedInfo.."[|c"..RAID_CLASS_COLORS[class].colorStr..accountInfo.gameAccountInfo.className.."|r]"
+							end
+						else
+							if (Favorites.db.profile.showClass and accountInfo.gameAccountInfo.className) then
+								if (Favorites.db.profile.classColorOppositeFaction) then
+									extendedInfo = extendedInfo.."[|c"..RAID_CLASS_COLORS[class].colorStr..accountInfo.gameAccountInfo.className.."|r]"
+								else
+									extendedInfo = extendedInfo.."["..accountInfo.gameAccountInfo.className.."]"
+								end
+							end
+						end
+					else
+						if (Favorites.db.profile.classColorOtherProject == 2) then
+							nameText = nameText:gsub("fffde05c", "ff7b8489")
+							if (Favorites.db.profile.showClass and accountInfo.gameAccountInfo.className) then
+								extendedInfo = extendedInfo.."[|cff7b8489"..accountInfo.gameAccountInfo.className.."|r]"
+							end
+						elseif (Favorites.db.profile.classColorOtherProject == 3) then
+							nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
+							nameText = nameText:gsub("ff7b8489", RAID_CLASS_COLORS[class].colorStr)
+							if (Favorites.db.profile.showClass and accountInfo.gameAccountInfo.className) then
+								extendedInfo = extendedInfo.."[|c"..RAID_CLASS_COLORS[class].colorStr..accountInfo.gameAccountInfo.className.."|r]"
+							end
+						elseif (Favorites.db.profile.classColorOtherProject == 4) then
+							nameText = nameText:gsub("fffde05c", RAID_CLASS_COLORS[class].colorStr)
+							if (Favorites.db.profile.showClass and accountInfo.gameAccountInfo.className) then
+								if (accountInfo.gameAccountInfo.factionName and currentFaction == accountInfo.gameAccountInfo.factionName) then
+									extendedInfo = extendedInfo.."[|c"..RAID_CLASS_COLORS[class].colorStr..accountInfo.gameAccountInfo.className.."|r]"
+								else
+									extendedInfo = extendedInfo.."["..accountInfo.gameAccountInfo.className.."]"
+								end
+							end
+						end
+					end
+				end
             button.background:SetColorTexture(FRIENDS_BNET_BACKGROUND_COLOR.r, FRIENDS_BNET_BACKGROUND_COLOR.g, FRIENDS_BNET_BACKGROUND_COLOR.b, FRIENDS_BNET_BACKGROUND_COLOR.a);
 
             if Favorites.db.profile.colorBackground then
@@ -400,11 +419,13 @@ local function fix(button)
               end
             end
 
-            if not button.facIcon then button.facIcon = button:CreateTexture("facIcon"); end
-            button.facIcon:ClearAllPoints();
-            button.facIcon:SetPoint("RIGHT", button.gameIcon, "LEFT", 7, -5);
-            button.facIcon:SetWidth(button.gameIcon:GetWidth())
-            button.facIcon:SetHeight(button.gameIcon:GetHeight())
+			if not button.facIcon then 
+				button.facIcon = button:CreateTexture("facIcon"); 
+				button.facIcon:ClearAllPoints();
+				button.facIcon:SetPoint("RIGHT", button.gameIcon, "LEFT", 7, -5);
+				button.facIcon:SetWidth(button.gameIcon:GetWidth())
+				button.facIcon:SetHeight(button.gameIcon:GetHeight())
+			end
             button.facIcon:SetTexture(getEmbeddedFactionIcon(accountInfo.gameAccountInfo.factionName));
             button.facIcon:Show()
 
@@ -412,7 +433,7 @@ local function fix(button)
     					infoText = GetOnlineInfoText(accountInfo.gameAccountInfo.clientProgram, accountInfo.gameAccountInfo.isWowMobile, accountInfo.rafLinkType, accountInfo.gameAccountInfo.richPresence);
     				else
     					infoText = GetOnlineInfoText(accountInfo.gameAccountInfo.clientProgram, accountInfo.gameAccountInfo.isWowMobile, accountInfo.rafLinkType, accountInfo.gameAccountInfo.areaName);
-    				end
+					end
     				button.gameIcon:SetTexture(BNet_GetClientTexture(accountInfo.gameAccountInfo.clientProgram));
 
     				local fadeIcon = (accountInfo.gameAccountInfo.clientProgram == BNET_CLIENT_WOW) and (accountInfo.gameAccountInfo.wowProjectID ~= WOW_PROJECT_ID);
@@ -493,14 +514,13 @@ local function fix(button)
 		header:SetAllPoints(button);
 		header:Show();
 		if button.bnSep then
-      if button.overrideTitle then
-        header:SetText(button.overrideTitle);
-      else
-			  header:SetText("Battle Net Friends");
-      end
+			if button.overrideTitle then
+				header:SetText(button.overrideTitle);
+			else
+					header:SetText("Battle Net Friends");
+			end
 		else
-			local ft, fo = BNGetNumFavs(button.favName)
-			header:SetFormattedText(button.favName.." (%d/%d)", fo, ft);
+			header:SetText(button.favName);
 		end
 		button.header = header;
 		local scrollFrame = FriendsListFrameScrollFrame;
@@ -544,9 +564,11 @@ local function fix(button)
 	end
 	-- finish setting up button if it's not a header
 	if ( nameText ) then
+		button.name:SetWidth(200)
 		button.name:SetText(nameText);
 		button.name:SetTextColor(nameColor.r, nameColor.g, nameColor.b);
-		button.info:SetText(infoText);
+		button.info:SetText("["..infoText.."] "..extendedInfo);
+		button.info:SetWidth(200)
 		button:Show();
     if isFavoriteFriend then
       button.Favorite:Show();

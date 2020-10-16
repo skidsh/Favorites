@@ -74,9 +74,11 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			end
 			local na = nil
 			if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
-				_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
+				local friendinfo = C_BattleNet.GetFriendAccountInfo(id);
+				na = friendinfo.battleTag;
+				ca = friendinfo.gameAccountInfo.characterName;
 			elseif ( buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
-				na, _, _, _, _, _, _, _, _ = GetFriendInfo(id);
+				na = C_FriendList.GetFriendInfo(id).name;
 			end
 			if (na and ca) and (not string.find(string.lower(na), string.lower(friendSearchValue)) and ca and not string.find(string.lower(ca), string.lower(friendSearchValue))) then
 				return
@@ -130,7 +132,10 @@ local function FriendsList_UpdateFIX(forceUpdate)
 		AddButtonInfo(BNET_HEADER_TEXT, nil, l)
 		-- favorite Battlenet friends
 		for i = 1 + numBNetFavorite, numBNetOffline+numBNetOnline-numBNetFavoriteOnline do
-			local id, _, battleTag , _, _, _, client = BNGetFriendInfo(i);
+			local friendinfo = C_BattleNet.GetFriendAccountInfo(i)
+			local id = friendinfo.bnetAccountID;
+			local battletag = friendinfo.battleTag;
+			local client = friendinfo.gameAccountInfo.clientProgram;
 			if s[id] then
 				s[id] = nil;
 				s[battleTag] = true
@@ -596,7 +601,11 @@ end
 function BNGetBTAG(t)
   local bTAG = nil
   for i=1, BNGetNumFriends() do
-		local bnetIDAccount, _, battleTag, _, _, _, client, o = BNGetFriendInfo(i);
+		local friendinfo = C_BattleNet.GetFriendAccountInfo(i);
+		local bnetIDAccount = friendinfo.bnetAccountID;
+		local battleTag = friendinfo.battleTag;
+		local client = friendinfo.gameAccountInfo.clientProgram;
+		local o = friendinfo.gameAccountInfo.isOnline;
 		if t == bnetIDAccount then
 		bTAG = battleTag
 		end

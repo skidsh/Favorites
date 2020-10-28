@@ -714,3 +714,21 @@ function FriendSearch_OnEditFocusGained(self)
 	self.searchIcon:SetVertexColor(1.0, 1.0, 1.0);
 	self.clearButton:Show();
 end
+
+-- 9.0.1 Depricated Function Fix
+local function getDeprecatedAccountInfo(accountInfo)
+	if accountInfo then
+		local wowProjectID = accountInfo.gameAccountInfo.wowProjectID or 0;
+		local clientProgram = accountInfo.gameAccountInfo.clientProgram ~= "" and accountInfo.gameAccountInfo.clientProgram or nil;
+		return	accountInfo.bnetAccountID, accountInfo.accountName, accountInfo.battleTag, accountInfo.isBattleTagFriend,
+				accountInfo.gameAccountInfo.characterName, accountInfo.gameAccountInfo.gameAccountID, clientProgram,
+				accountInfo.gameAccountInfo.isOnline, accountInfo.lastOnlineTime, accountInfo.isAFK, accountInfo.isDND, accountInfo.customMessage, accountInfo.note, accountInfo.isFriend,
+				accountInfo.customMessageTime, wowProjectID, accountInfo.rafLinkType == Enum.RafLinkType.Recruit, accountInfo.gameAccountInfo.canSummon, accountInfo.isFavorite, accountInfo.gameAccountInfo.isWowMobile;
+	end
+end
+
+-- Use C_BattleNet.GetFriendAccountInfo instead.
+BNGetFriendInfo = function(friendIndex)
+	local accountInfo = C_BattleNet.GetFriendAccountInfo(friendIndex);
+	return getDeprecatedAccountInfo(accountInfo);
+end

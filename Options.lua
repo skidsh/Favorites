@@ -142,7 +142,6 @@ function Favorites:SetupOptions()
 										Favorites.db.profile.favTypes[s][ff] = nil
 									end
 								else
-									print(s)
 									Favorites.db.profile.favTypes[s] = nil
 								end
 							end

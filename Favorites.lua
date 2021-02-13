@@ -73,17 +73,27 @@ local function FriendsList_UpdateFIX(forceUpdate)
 				return
 			end
 			local na = nil
+			local class = nil
 			if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
 				_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
+				class = C_BattleNet.GetFriendAccountInfo(id).gameAccountInfo.className;
 			elseif ( buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
-				na, _, _, _, _, _, _, _, _ = GetFriendInfo(id);
+				local info = C_FriendList.GetFriendInfoByIndex(id);
+				na = info.name;
+				class = info.className;
 			end
-			if (na and ca) and (not string.find(string.lower(na), string.lower(friendSearchValue)) and ca and not string.find(string.lower(ca), string.lower(friendSearchValue))) then
-				return
-			elseif (na and not ca) and (not string.find(string.lower(na), string.lower(friendSearchValue))) then
-				return
-			elseif (not na and ca) and (not string.find(string.lower(ca), string.lower(friendSearchValue))) then
-				return
+			if (class and (RAID_CLASS_COLORS[string.upper(friendSearchValue)] ~= nil)) then
+				if (not string.find(string.lower(class), string.lower(friendSearchValue))) then
+					return
+				end
+			else
+				if (na and ca) and (not string.find(string.lower(na), string.lower(friendSearchValue)) and ca and not string.find(string.lower(ca), string.lower(friendSearchValue))) then
+					return
+				elseif (na and not ca) and (not string.find(string.lower(na), string.lower(friendSearchValue))) then
+					return
+				elseif (not na and ca) and (not string.find(string.lower(ca), string.lower(friendSearchValue))) then
+					return
+				end
 			end
 		end
 		addButtonIndex = addButtonIndex + 1;

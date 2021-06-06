@@ -6,6 +6,7 @@ local defaults = {
 	showLevel = false,
 	showClass = false,
 	splitClassic = false,
+	hiddenFavNames = {},
  	classColorOtherProject = 1,
 	favTypes = {
 		["Favorites"] = {	},
@@ -13,6 +14,7 @@ local defaults = {
 	favBTs = {	}
   }
 }
+
 ADD_FAVORITE_STATUS = "Add to Blizzard Favorites"
 REMOVE_FAVORITE_STATUS = "Remove from Blizzard Favorites"
 UnitPopupButtons["BN_ADD_FAVORITE"]	= { text = ADD_FAVORITE_STATUS, };
@@ -26,8 +28,8 @@ local FriendListEntries = { }
 local BNET_HEADER_TEXT = 6;
 local BNET_SEARCH = 20;
 FRIENDS_BUTTON_HEIGHTS[FRIENDS_BUTTON_TYPE_DIVIDER] = 10
-FRIENDS_BUTTON_HEIGHTS[BNET_HEADER_TEXT] = 20;
-FRIENDS_BUTTON_HEIGHTS[BNET_SEARCH] = 25;
+FRIENDS_BUTTON_HEIGHTS[BNET_HEADER_TEXT] = 34;
+FRIENDS_BUTTON_HEIGHTS[BNET_SEARCH] = 34;
 local ONE_MINUTE = 60;
 local ONE_HOUR = 60 * ONE_MINUTE;
 local ONE_DAY = 24 * ONE_HOUR;
@@ -46,7 +48,7 @@ local INVITE_RESTRICTION_WOW_PROJECT_CLASSIC = 8;
 local INVITE_RESTRICTION_NONE = 9;
 local INVITE_RESTRICTION_MOBILE = 10;
 local currentFaction = UnitFactionGroup("player");
-local hiddenFavNames = {}
+
 local buttonsAdded = {}
 
 function Favorites:OnInitialize()
@@ -155,7 +157,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			end
 			if s[battleTag] then
 				favs[i] = battleTag;
-				if (not hiddenFavNames[l]) then
+				if (not Favorites.db.profile.hiddenFavNames[l]) then
 					AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 				end
 			end
@@ -172,7 +174,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			if (wowProjectID ~= nil) then
 				if (wowProjectID ~= WOW_PROJECT_ID) and not favs[i] then	
 					classics[i] = battleTag;		
-					if (not hiddenFavNames["World of Warcraft Classic"]) then
+					if (not Favorites.db.profile.hiddenFavNames["World of Warcraft Classic"]) then
 						AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 					end
 				end
@@ -184,29 +186,37 @@ local function FriendsList_UpdateFIX(forceUpdate)
 
 	-- online Battlenet friends
 	for i = 1 + numBNetFavorite, numBNetOnline - numBNetFavoriteOnline do
-		if not favs[i] and not classics[i] and (not hiddenFavNames["Battle Net Friends"]) then
+		if not favs[i] and not classics[i] and (not Favorites.db.profile.hiddenFavNames["Battle Net Friends"]) then
 			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 		end
 	end
 
 	-- online WoW friends
+	AddButtonInfo(BNET_HEADER_TEXT, nil, "Online Wow Friends")
+
 	for i = 1, numWoWOnline do
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_WOW, i);
+		if (not Favorites.db.profile.hiddenFavNames["Online Wow Friends"]) then
+			AddButtonInfo(FRIENDS_BUTTON_TYPE_WOW, i);
+		end
 	end
 	-- divider between online and offline friends
 	if ( (numBNetOnline > 0 or numWoWOnline > 0) and (numBNetOffline > 0 or numWoWOffline > 0) ) then
-		AddButtonInfo(BNET_HEADER_TEXT, nil, "Offline")
+		AddButtonInfo(BNET_HEADER_TEXT, nil, "Offline Battle Net Friends")
 	end
 
   -- offline Battlenet friends
 	for i = 1, numBNetOffline - numBNetFavoriteOffline do
-		if not favs[i + numBNetOnline] and (not hiddenFavNames["Offline"]) then
+		if not favs[i + numBNetOnline] and (not Favorites.db.profile.hiddenFavNames["Offline Battle Net Friends"]) then
 			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i + numBNetOnline);
 		end
 	end
+
 	-- offline WoW friends
+	AddButtonInfo(BNET_HEADER_TEXT, nil, "Offline Wow Friends")
 	for i = 1, numWoWOffline do
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_WOW, i + numWoWOnline);
+		if (not Favorites.db.profile.hiddenFavNames["Offline Wow Friends"]) then
+			AddButtonInfo(FRIENDS_BUTTON_TYPE_WOW, i + numWoWOnline);
+		end
 	end
 
 	FriendsListFrameScrollFrame.totalFriendListEntriesHeight = totalButtonHeight;
@@ -336,6 +346,7 @@ local function fix(button)
 	button.overrideTitle = FriendListEntries[index].overrideTitle
 	button.bnSep = FriendListEntries[index].bnSep
 	if button.header then
+		button.header:SetText("")
 		button.header:Hide()
 	end
 	if button.searchBox and not (button.buttonType == BNET_SEARCH) then
@@ -541,7 +552,7 @@ local function fix(button)
 		local scrollFrame = FriendsListFrameScrollFrame;
 		local header = button.header
 		if not header then
-			header = CreateFrame("Button", "favHeader", scrollFrame.ScrollChild);
+			header = CreateFrame("Button", "favHeader"..index, scrollFrame.ScrollChild);
 			header:SetDisabledFontObject(GameFontNormalSmall)
 			header:SetHighlightFontObject(GameFontNormalSmall)
 			header:SetNormalFontObject(GameFontNormalSmall)
@@ -578,7 +589,7 @@ local function fix(button)
 		local scrollFrame = FriendsListFrameScrollFrame;
 		local searchBox = button.searchBox
 		if not searchBox then
-			searchBox = CreateFrame("EditBox", "searchBox", scrollFrame.ScrollChild, "SearchBoxTemplate");
+			searchBox = CreateFrame("EditBox", "searchBox"..index, scrollFrame.ScrollChild, "SearchBoxTemplate");
 			searchBox.Instructions:SetText("Search Friends");
 			searchBox:SetScript("OnHide", FriendSearch_OnHide)
 			searchBox:SetScript("OnTextChanged", FriendSearch_OnTextChanged)
@@ -609,7 +620,9 @@ local function fix(button)
 	if ( nameText ) then
 		button.name:SetWidth(200)
 		button.name:SetText(nameText);
-		button.name:SetTextColor(nameColor.r, nameColor.g, nameColor.b);
+		if (nameColor ~= nil) then
+			button.name:SetTextColor(nameColor.r, nameColor.g, nameColor.b);
+		end
 		button.info:SetText("["..infoText.."] "..extendedInfo);
 		button.info:SetWidth(200)
 		button:Show();
@@ -719,7 +732,7 @@ function FriendSearch_OnHide(self)
 		FriendSearch_OnTextChanged(self);
 	end
 end
-
+local savedHidden = {}
 function FriendSearch_OnTextChanged(self, userChanged)
 	if ( not self:HasFocus() and self:GetText() == "" ) then
 		self.searchIcon:SetVertexColor(0.6, 0.6, 0.6);
@@ -729,6 +742,20 @@ function FriendSearch_OnTextChanged(self, userChanged)
 		self.clearButton:Show();
 	end
 	friendSearchValue = self:GetText()
+	if (Favorites.db.profile.hiddenFavNames ~= {}) then
+		for l, s in pairs(Favorites.db.profile.hiddenFavNames) do
+			savedHidden[l] = s
+		end
+		Favorites.db.profile.hiddenFavNames = {}
+	end
+
+	if (self:GetText() == "") then
+		for l, s in pairs(savedHidden) do
+			Favorites.db.profile.hiddenFavNames[l] = s
+		end
+		savedHidden = {}
+	end
+	
 	FriendsList_Update(true)
 	self.Instructions:SetShown(self:GetText() == "")
 end
@@ -776,10 +803,10 @@ local function getDeprecatedAccountInfo(accountInfo)
 end
 
 function Header_Clicked(self, button, down)
-	if (not hiddenFavNames[self:GetText()]) then
-		hiddenFavNames[self:GetText()] = true
+	if (not Favorites.db.profile.hiddenFavNames[self:GetText()]) then
+		Favorites.db.profile.hiddenFavNames[self:GetText()] = true
 	else
-		hiddenFavNames[self:GetText()] = nil
+		Favorites.db.profile.hiddenFavNames[self:GetText()] = nil
 	end
 	FriendsList_Update(true)
 end
@@ -792,7 +819,7 @@ end
 
 function header_hover(self)
 	local openOrClose = "Expand"
-	if (not hiddenFavNames[self:GetText()]) then
+	if (not Favorites.db.profile.hiddenFavNames[self:GetText()]) then
 		openOrClose = "Collapse"
 	end
 	local tooltipText = "Click to "..openOrClose;

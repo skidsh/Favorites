@@ -184,7 +184,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 
 	-- online Battlenet friends
 	for i = 1 + numBNetFavorite, numBNetOnline - numBNetFavoriteOnline do
-		if not favs[i] and not classics[i] and (not hiddenFavNames["World of Warcraft Retail"]) then
+		if not favs[i] and not classics[i] and (not hiddenFavNames["Battle Net Friends"]) then
 			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 		end
 	end
@@ -195,12 +195,12 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	end
 	-- divider between online and offline friends
 	if ( (numBNetOnline > 0 or numWoWOnline > 0) and (numBNetOffline > 0 or numWoWOffline > 0) ) then
-		AddButtonInfo(FRIENDS_BUTTON_TYPE_DIVIDER, nil);
+		AddButtonInfo(BNET_HEADER_TEXT, nil, "Offline")
 	end
 
   -- offline Battlenet friends
 	for i = 1, numBNetOffline - numBNetFavoriteOffline do
-		if not favs[i + numBNetOnline] then
+		if not favs[i + numBNetOnline] and (not hiddenFavNames["Offline"]) then
 			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i + numBNetOnline);
 		end
 	end

@@ -1,6 +1,6 @@
-## Interface: 90001
+## Interface: 90005
 ## Title: |cFF99CC01Favorites|r
-## Version: 3.5
+## Version: 3.6
 ## Notes: Adds favorites & Class colors to the in game friends list
 ## Author: Jax
 ## SavedVariables: favsDB

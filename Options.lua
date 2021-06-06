@@ -80,8 +80,24 @@ function Favorites:SetupOptions()
 					name = "",
 					type = "header"
 				  },
+				  split = {
+					order = 4,
+					width = 1.5,
+					name = "Seperate Wow Classic and Retail",
+					desc = "Splits Wow classic friends into a seperate group",
+					type = "toggle",
+					set = function(info,val) self.db.profile.splitClassic = val
+											 FriendsList_Update(true)
+						  end,
+					get = function(info) return self.db.profile.splitClassic end
+				  },
+				  sc2 = {
+					order = 5,
+					name = "",
+					type = "header"
+				  },
 				ccOP = {
-					order = 6,
+					order = 7,
 					width = "double",
 					name = "Color WoW Classic Friends",
 					desc = "Color of the names of Friends playing WoW Classic",
@@ -99,7 +115,7 @@ function Favorites:SetupOptions()
 					get = function(info) return self.db.profile.classColorOtherProject end
 				},
 				favTypes={
-					order = 7,
+					order = 8,
 					name = "Current Favorite Groups",
 					type = "select",
 					values = Favorites.favTypes,
@@ -108,7 +124,7 @@ function Favorites:SetupOptions()
 					style = "radio"
 				},
 				delFav={
-					order = 8,
+					order = 9,
 					width = "normal",
 					name = "Remove Group",
 					type = "execute",
@@ -128,7 +144,7 @@ function Favorites:SetupOptions()
 					end,
 			    },
 					resetFav={
-						order = 9,
+						order = 10,
 						width = "nomral",
 						name = "Full Reset",
 						type = "execute",
@@ -156,11 +172,11 @@ function Favorites:SetupOptions()
 				spacer = {
 				   type = "description",
 				   name="", --use an empty value for name
-				   order = 10,
+				   order = 11,
 				   width="small", --forces a new line after the items above it
 				},
 				addFav={
-					order = 11,
+					order = 12,
 					name = "Add Custom Favorites Group",
 					type = "input",
 					get = function() return "" end,
@@ -175,7 +191,7 @@ function Favorites:SetupOptions()
 				notes = {
 				   type = "description",
 				   name="\n\nThe default favorites group cannot be deleted.", --use an empty value for name
-				   order =12,
+				   order =13,
 				   width="full", --forces a new line after the items above it
 				},
 

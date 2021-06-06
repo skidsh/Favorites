@@ -5,6 +5,7 @@ local defaults = {
 	classColorOppositeFaction = false,
 	showLevel = false,
 	showClass = false,
+	splitClassic = false,
  	classColorOtherProject = 1,
 	favTypes = {
 		["Favorites"] = {	},
@@ -25,7 +26,7 @@ local FriendListEntries = { }
 local BNET_HEADER_TEXT = 6;
 local BNET_SEARCH = 20;
 FRIENDS_BUTTON_HEIGHTS[FRIENDS_BUTTON_TYPE_DIVIDER] = 10
-FRIENDS_BUTTON_HEIGHTS[BNET_HEADER_TEXT] = 25;
+FRIENDS_BUTTON_HEIGHTS[BNET_HEADER_TEXT] = 20;
 FRIENDS_BUTTON_HEIGHTS[BNET_SEARCH] = 25;
 local ONE_MINUTE = 60;
 local ONE_HOUR = 60 * ONE_MINUTE;
@@ -45,7 +46,8 @@ local INVITE_RESTRICTION_WOW_PROJECT_CLASSIC = 8;
 local INVITE_RESTRICTION_NONE = 9;
 local INVITE_RESTRICTION_MOBILE = 10;
 local currentFaction = UnitFactionGroup("player");
-
+local hiddenFavNames = {}
+local buttonsAdded = {}
 
 function Favorites:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("favsDB", defaults, true)
@@ -53,7 +55,7 @@ function Favorites:OnInitialize()
 end
 
 local function FriendsList_UpdateFIX(forceUpdate)
-
+	FriendListEntries = { }
     local numBNetTotal, numBNetOnline, numBNetFavorite, numBNetFavoriteOnline = BNGetNumFriends();
 	local numBNetOffline = numBNetTotal - numBNetOnline;
 	local numBNetFavoriteOffline = numBNetFavorite - numBNetFavoriteOnline;
@@ -74,14 +76,19 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			end
 			local na = nil
 			local class = nil
+			local wowProjectID = nil
 			if ( buttonType == FRIENDS_BUTTON_TYPE_BNET ) then
 				_, _, na, _, ca, _, _, _ = BNGetFriendInfo(id);
-				class = C_BattleNet.GetFriendAccountInfo(id).gameAccountInfo.className;
+				local info = C_BattleNet.GetFriendAccountInfo(id)
+				class = info.gameAccountInfo.className;
 			elseif ( buttonType == FRIENDS_BUTTON_TYPE_WOW ) then
 				local info = C_FriendList.GetFriendInfoByIndex(id);
 				na = info.name;
 				class = info.className;
 			end
+			
+
+
 			if (class and (RAID_CLASS_COLORS[string.upper(friendSearchValue)] ~= nil)) then
 				if (not string.find(string.lower(class), string.lower(friendSearchValue))) then
 					return
@@ -134,8 +141,9 @@ local function FriendsList_UpdateFIX(forceUpdate)
   for i = 1, numBNetFavorite do
     AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
   end
+
 	-- --favs
-	 local favs = { };
+  local favs = { };
 	for l, s in pairs(Favorites.db.profile.favTypes) do
 		AddButtonInfo(BNET_HEADER_TEXT, nil, l)
 		-- favorite Battlenet friends
@@ -147,15 +155,36 @@ local function FriendsList_UpdateFIX(forceUpdate)
 			end
 			if s[battleTag] then
 				favs[i] = battleTag;
-				AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
+				if (not hiddenFavNames[l]) then
+					AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
+				end
 			end
 		end
 	end
+	local classics = {};
+
+	if (Favorites.db.profile.splitClassic) then
+		-- CLASSIC PLAYERS
+		AddButtonInfo(BNET_HEADER_TEXT, nil, "World of Warcraft Classic")
+		for i = 1 + numBNetFavorite, numBNetOffline+numBNetOnline-numBNetFavoriteOnline do
+			local id, _, battleTag , _, _, _, client = BNGetFriendInfo(i);
+			local wowProjectID = C_BattleNet.GetFriendAccountInfo(i).gameAccountInfo.wowProjectID
+			if (wowProjectID ~= nil) then
+				if (wowProjectID ~= WOW_PROJECT_ID) and not favs[i] then	
+					classics[i] = battleTag;		
+					if (not hiddenFavNames["World of Warcraft Classic"]) then
+						AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
+					end
+				end
+			end
+		end
+	end
+
 	AddButtonInfo(BNET_HEADER_TEXT, nil, nil, true);
 
 	-- online Battlenet friends
 	for i = 1 + numBNetFavorite, numBNetOnline - numBNetFavoriteOnline do
-		if not favs[i] then
+		if not favs[i] and not classics[i] and (not hiddenFavNames["World of Warcraft Retail"]) then
 			AddButtonInfo(FRIENDS_BUTTON_TYPE_BNET, i);
 		end
 	end
@@ -168,6 +197,7 @@ local function FriendsList_UpdateFIX(forceUpdate)
 	if ( (numBNetOnline > 0 or numWoWOnline > 0) and (numBNetOffline > 0 or numWoWOffline > 0) ) then
 		AddButtonInfo(FRIENDS_BUTTON_TYPE_DIVIDER, nil);
 	end
+
   -- offline Battlenet friends
 	for i = 1, numBNetOffline - numBNetFavoriteOffline do
 		if not favs[i + numBNetOnline] then
@@ -515,8 +545,11 @@ local function fix(button)
 			header:SetDisabledFontObject(GameFontNormalSmall)
 			header:SetHighlightFontObject(GameFontNormalSmall)
 			header:SetNormalFontObject(GameFontNormalSmall)
-			header:Disable()
+			header:Enable()
 		end
+		header:SetScript("OnClick", Header_Clicked)
+		header:SetScript("OnEnter", header_hover);
+		header:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 	--	local header = FriendsListFrameScrollFrame.PendingInvitesHeaderButton;
 		header:SetWidth(button:GetWidth())
 		header:SetHeight(height)
@@ -553,7 +586,7 @@ local function fix(button)
 			searchBox:SetScript("OnEditFocusLost", FriendSearch_OnEditFocusLost)
 			searchBox:SetScript("OnEditFocusGained", FriendSearch_OnEditFocusGained)
 			searchBox:SetWidth(button:GetWidth()-20)
-			searchBox:SetHeight(30)
+			searchBox:SetHeight(height)
 			searchBox:SetPoint("TOPLEFT", button, 10, 0);
 		end
 		searchBox:Show();
@@ -592,7 +625,12 @@ local function fix(button)
 	end
 	-- update the tooltip if hovering over a button
 	if (FriendsTooltip.button == button) or (GetMouseFocus() == button) then
-		button:OnEnter();
+		if (button.buttonType == BNET_HEADER_TEXT) then
+			FriendsTooltip:Show();
+		else
+			button:OnEnter();		
+		end
+	
 	end
 	-- if ( GetMouseFocus() == button ) then
 	-- 	FriendsFrameTooltip_Show(button);
@@ -600,7 +638,6 @@ local function fix(button)
 	if button.searchBox then
 		button.searchBox.updating = false;
 	end
-
 	return height;
 end
 function BNGetBTAG(t)
@@ -656,6 +693,7 @@ local function fixDropDown()
 end
 hooksecurefunc("FriendsFrameBNOfflineDropDown_Initialize", fixDropDown)
 hooksecurefunc("FriendsFrameBNDropDown_Initialize", fixDropDown)
+
 local function FriendsList_GetScrollFrameTopButtonNEW(offset)
 	local usedHeight = 0;
 	for i = 1, #FriendListEntries do
@@ -737,8 +775,34 @@ local function getDeprecatedAccountInfo(accountInfo)
 	end
 end
 
+function Header_Clicked(self, button, down)
+	if (not hiddenFavNames[self:GetText()]) then
+		hiddenFavNames[self:GetText()] = true
+	else
+		hiddenFavNames[self:GetText()] = nil
+	end
+	FriendsList_Update(true)
+end
+
 -- Use C_BattleNet.GetFriendAccountInfo instead.
 BNGetFriendInfo = function(friendIndex)
 	local accountInfo = C_BattleNet.GetFriendAccountInfo(friendIndex);
 	return getDeprecatedAccountInfo(accountInfo);
+end
+
+function header_hover(self)
+	local openOrClose = "Expand"
+	if (not hiddenFavNames[self:GetText()]) then
+		openOrClose = "Collapse"
+	end
+	local tooltipText = "Click to "..openOrClose;
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 34, -34);
+	GameTooltip:SetText(tooltipText);
+	GameTooltip:Show();
+end
+FriendsFrame_UpdateOLD = FriendsFrame_Update
+FriendsFrame_Update = function()
+	HybridScrollFrame_CreateButtons(FriendsListFrameScrollFrame, "FriendsListButtonTemplate");
+
+	FriendsFrame_UpdateOLD()
 end

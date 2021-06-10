@@ -817,19 +817,28 @@ BNGetFriendInfo = function(friendIndex)
 	return getDeprecatedAccountInfo(accountInfo);
 end
 
+function GetNumInFavorites(favoriteGroupName)
+	if (favoriteGroupName == nil) then return 0 end
+	local count = 0;
+	if (Favorites.db.profile.favTypes[favoriteGroupName] ~= nil) then
+		for k, v in pairs(Favorites.db.profile.favTypes[favoriteGroupName]) do
+			count = count + 1;
+		end
+	end
+	return count;
+end
+
 function header_hover(self)
 	local openOrClose = "Expand"
 	if (not Favorites.db.profile.hiddenFavNames[self:GetText()]) then
 		openOrClose = "Collapse"
 	end
-	local tooltipText = "Click to "..openOrClose;
+	local num = GetNumInFavorites(self:GetText())
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 34, -34);
-	GameTooltip:SetText(tooltipText);
+	GameTooltip:AddLine(self:GetText().."\n", 3.0/255.0, 165.0/255.0, 252.0/255.0);
+	if (num > 0) then
+		GameTooltip:AddLine("Count: "..num.."\n",1,1,1);
+	end
+	GameTooltip:AddLine("Click to "..openOrClose,1,1,1);
 	GameTooltip:Show();
-end
-FriendsFrame_UpdateOLD = FriendsFrame_Update
-FriendsFrame_Update = function()
-	HybridScrollFrame_CreateButtons(FriendsListFrameScrollFrame, "FriendsListButtonTemplate");
-
-	FriendsFrame_UpdateOLD()
 end

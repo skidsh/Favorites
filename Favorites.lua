@@ -17,8 +17,8 @@ local defaults = {
 
 ADD_FAVORITE_STATUS = "Add to Blizzard Favorites"
 REMOVE_FAVORITE_STATUS = "Remove from Blizzard Favorites"
-UnitPopupButtons["BN_ADD_FAVORITE"]	= { text = ADD_FAVORITE_STATUS, };
-UnitPopupButtons["BN_REMOVE_FAVORITE"]	= { text = REMOVE_FAVORITE_STATUS, };
+-- UnitPopupButtons["BN_ADD_FAVORITE"]	= { text = ADD_FAVORITE_STATUS, };
+-- UnitPopupButtons["BN_REMOVE_FAVORITE"]	= { text = REMOVE_FAVORITE_STATUS, };
 local friendSearchValue = ""
 local old = FriendsFrame_UpdateFriendButton
 local oldFLU = FriendsList_Update
